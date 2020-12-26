@@ -1,14 +1,16 @@
 #=
-IdealGas.jl:
+GasLaws.jl:
 - Julia version: 1.5.1
 - Author: tbald
 - Date: 2020-12-20
 =#
 
-module IdealGas
+module GasLaws
 using Unitful
+using Unitful: 𝐋,𝐍
 
 const R=.0831446261815324u"bar*L*K^-1*mol^-1"
+@derived_dimension MolarVolume 𝐋^3/𝐍
 
 #Returns amount in desired unit
 function ideal(P::Unitful.Pressure,V::Unitful.Volume,
@@ -46,12 +48,28 @@ function ideal(P::Unitful.PressureUnits,V::Unitful.Volume,
     newP=(n*newR*newT)/V
 end
 
-@time P=ideal(u"atm",22.4u"L",2u"mol",273.0u"K")
-println(P)
-@time V=ideal(2u"atm",u"L",2u"mol",273.0u"K")
-println(V)
-@time N=ideal(1.0u"atm",22.7u"mL",u"mol",273.0u"°C")
-println(N)
-@time T=ideal(1.0u"atm",22.7u"mL",.0005u"mol",u"°C")
-println(T)
+#Solves for pressure using Van der Waals
+#Default a and b for CO2
+function Van_der_Waals(Vm::MolarVolume,T::Unitful.Temperature;a=3.658,b=0.04286)::typeof(1.0u"bar")
+    full_a=a*1.0u"bar*L^2*mol^-2"
+    full_b=b*1.0u"L*mol^-1"
+    newT= T |> u"K"
+
+    p=R*newT/(Vm-full_b)
+    p+=-full_a/Vm^2
+end
+
+#Solves for pressure using Redlich-Kwong equation
+##Default a and b for CO2
+function Redlich_Kwong(Vm::MolarVolume,T::Unitful.Temperature;a=64.43,b=0.02963)::typeof(1.0u"bar")
+    full_a=a*1.0u"bar*L^2*mol^-2*K^(1/2)"
+    full_b=b*1.0u"L*mol^-1"
+    newT= T |> u"K"
+
+    p=R*newT/(Vm-full_b)
+    p+=-full_a/(newT^(1/2)*Vm*(Vm+full_b))
+end
+
+##Could add reduced versions of the real gas laws
+
 end
